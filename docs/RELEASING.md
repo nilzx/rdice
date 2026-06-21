@@ -23,6 +23,17 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+The preferred local automation is:
+
+```sh
+bash scripts/release.sh --dry-run
+```
+
+This runs formatting, clippy, tests, and `cargo publish --dry-run` for
+`rdice-core`. If the current `rdice-core` version is not indexed yet, Cargo
+cannot fully verify downstream packages; in that case the script inspects
+downstream package contents with `cargo package --no-verify --list`.
+
 Check the package contents:
 
 ```sh
@@ -62,13 +73,24 @@ cargo publish -p rdice-tui
 Wait for crates.io to index `rdice-core` before publishing packages that depend
 on it.
 
+To run the same checks, push the current branch, and publish all packages:
+
+```sh
+bash scripts/release.sh --publish
+```
+
+The publish mode requires a clean working tree, a configured `origin`, and a
+valid crates.io login. It pushes the current branch first, publishes
+`rdice-core`, then retries downstream dry-runs until crates.io has indexed the
+new core version before uploading `rdice-cli` and `rdice-tui`.
+
 ## Version Updates
 
 Update the version in the package being released. If `rdice-core` changes, also
 update the workspace dependency requirement used by downstream packages:
 
 ```toml
-rdice-core = { version = "0.1.0", path = "crates/rdice-core" }
+rdice-core = { version = "0.1.1", path = "crates/rdice-core" }
 ```
 
 Published versions cannot be overwritten. If a release is broken, publish a new
@@ -76,7 +98,7 @@ version. Use `cargo yank` only to prevent new dependency resolution to a bad
 version:
 
 ```sh
-cargo yank --version 0.1.0 rdice-core
+cargo yank --version 0.1.1 rdice-core
 ```
 
 ## Tags
@@ -84,7 +106,7 @@ cargo yank --version 0.1.0 rdice-core
 Use package-scoped tags:
 
 ```text
-rdice-core-v0.1.0
-rdice-cli-v0.1.0
-rdice-tui-v0.1.0
+rdice-core-v0.1.1
+rdice-cli-v0.1.1
+rdice-tui-v0.1.1
 ```
