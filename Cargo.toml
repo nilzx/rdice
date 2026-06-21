@@ -11,6 +11,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT"
+repository = "https://github.com/nilzx/rdice"
+homepage = "https://github.com/nilzx/rdice"
 
 [workspace.dependencies]
 rand = "0.10.1"
