@@ -30,9 +30,9 @@ bash scripts/release.sh --dry-run
 ```
 
 This runs formatting, clippy, tests, and `cargo publish --dry-run` for
-`rdice-core`. If the current `rdice-core` version is not indexed yet, Cargo
-cannot fully verify downstream packages; in that case the script inspects
-downstream package contents with `cargo package --no-verify --list`.
+`rdice-core`. If the current `rdice-core` version is not visible through the
+configured registry index yet, Cargo cannot fully verify downstream packages;
+in that case the script performs downstream upload dry-runs with `--no-verify`.
 
 Check the package contents:
 
@@ -82,7 +82,10 @@ bash scripts/release.sh --publish
 The publish mode requires a clean working tree, a configured `origin`, and a
 valid crates.io login. It pushes the current branch first, publishes
 `rdice-core`, then retries downstream dry-runs until crates.io has indexed the
-new core version before uploading `rdice-cli` and `rdice-tui`.
+new core version before uploading `rdice-cli` and `rdice-tui`. If the configured
+registry mirror lags behind official crates.io but upload dry-run succeeds, the
+script publishes downstream packages with `--no-verify` after the full local
+test suite has passed.
 
 ## Version Updates
 

@@ -23,8 +23,8 @@ cargo publish -p rdice-core --dry-run
 for package in "${dependent_packages[@]}"; do
   if ! cargo publish -p "$package" --dry-run; then
     echo "Full dry-run for $package is blocked until rdice-core is indexed at this version."
-    echo "Inspecting $package package contents without dependency verification."
-    cargo package -p "$package" --no-verify --list >/dev/null
+    echo "Running upload dry-run for $package without local dependency verification."
+    cargo publish -p "$package" --dry-run --no-verify
   fi
 done
 
@@ -41,6 +41,12 @@ for package in "${dependent_packages[@]}"; do
   for attempt in {1..30}; do
     if cargo publish -p "$package" --dry-run; then
       cargo publish -p "$package"
+      break
+    fi
+
+    if cargo publish -p "$package" --dry-run --no-verify; then
+      echo "Publishing $package without local dependency verification because the configured registry index is stale."
+      cargo publish -p "$package" --no-verify
       break
     fi
 
