@@ -35,6 +35,12 @@ fn command_key_enters_command_mode() {
 }
 
 #[test]
+fn history_key_opens_history() {
+    let mut state = InputState::default();
+    assert_eq!(state.push('h'), Some(InputAction::OpenHistory));
+}
+
+#[test]
 fn manager_key_opens_contextual_manager() {
     let mut state = InputState::default();
     assert_eq!(state.push('m'), Some(InputAction::OpenManager));

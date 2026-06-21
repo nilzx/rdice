@@ -143,6 +143,7 @@ fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
         InputAction::ToggleText => app.toggle_text_visible(),
         InputAction::ToggleRange => app.toggle_range_visible(),
         InputAction::ToggleEv => app.toggle_ev_visible(),
+        InputAction::OpenHistory => app.apply_command(rdice_tui::command::Command::History)?,
         InputAction::PreviousPage => app.previous_page(),
         InputAction::NextPage => app.next_page(),
         InputAction::EnterCommandMode => app.enter_command_mode(),
@@ -150,6 +151,7 @@ fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
         InputAction::Escape => app.escape(),
         InputAction::AddDie => {
             if let rdice_tui::app::Screen::TrayDetail(name) = &app.screen {
+                app.add_die_page = 0;
                 app.screen = rdice_tui::app::Screen::AddDie(name.clone());
             }
         }

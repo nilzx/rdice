@@ -33,6 +33,7 @@ r         roll selected trays
 t         show/hide text results
 R         show/hide range annotations
 E         show/hide expected value annotations
+h         show roll history
 m         open tray manager
 PgUp/PgDn change page
 :         command mode
@@ -46,6 +47,7 @@ r         roll current tray
 l<num>    lock/unlock slot
 d<num>    remove slot
 a         add die
+h         show roll history
 m         open custom dice manager
 Esc       return to overview
 :         command mode
@@ -56,6 +58,7 @@ Commands:
 ```text
 :manager dice
 :manager trays
+:history
 :dice new fate -1 0 +
 :dice delete fate
 :dice edit fate -1 0 1

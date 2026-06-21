@@ -3,7 +3,7 @@ use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::widgets::Paragraph;
 
 use crate::app::{App, Screen};
-use crate::screens::{dice_manager, overview, tray, tray_manager};
+use crate::screens::{dice_manager, history, overview, tray, tray_manager};
 
 pub fn render(frame: &mut Frame<'_>, app: &App) {
     let area = frame.area();
@@ -18,6 +18,7 @@ pub fn render(frame: &mut Frame<'_>, app: &App) {
         Screen::AddDie(name) => tray::render_add_die(frame, chunks[0], app, name),
         Screen::DiceManager => dice_manager::render(frame, chunks[0], app),
         Screen::TrayManager => tray_manager::render(frame, chunks[0], app),
+        Screen::History => history::render(frame, chunks[0], app),
     }
 
     frame.render_widget(
@@ -28,13 +29,16 @@ pub fn render(frame: &mut Frame<'_>, app: &App) {
 
 pub fn help_text(app: &App) -> &'static str {
     match app.screen {
-        Screen::Overview => "1-9 select  o<num> open  r roll  t/R/E display  m trays  :  q",
-        Screen::TrayDetail(_) => {
-            "r roll  a add  l<num> lock  d<num> remove  m dice  Esc overview  :"
+        Screen::Overview => {
+            "1-9 select  o<num> open  r roll  t/R/E display  h history  m trays  :  q"
         }
-        Screen::AddDie(_) => "1-9 add die  Esc tray",
+        Screen::TrayDetail(_) => {
+            "r roll  a add  l<num> lock  d<num> remove  h history  m dice  Esc overview  :"
+        }
+        Screen::AddDie(_) => "1-9 add die  PgUp/PgDn pages  Esc tray",
         Screen::TrayManager => "n new  d<num> delete  e<num> edit  :tray ...  Esc overview",
         Screen::DiceManager => "n new  d<num> delete  e<num> edit  :dice ...  Esc back",
+        Screen::History => "recent rolls  Esc back",
     }
 }
 

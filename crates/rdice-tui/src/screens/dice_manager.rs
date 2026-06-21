@@ -9,6 +9,7 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
         .engine
         .custom_dice()
         .into_iter()
+        .skip(app.dice_manager_page * 9)
         .take(9)
         .enumerate()
         .map(|(index, die)| {
@@ -17,6 +18,11 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
         })
         .collect::<Vec<_>>()
         .join("\n");
+    let body = if body.is_empty() {
+        "No custom dice. Press n to create one.".to_string()
+    } else {
+        body
+    };
     frame.render_widget(
         Paragraph::new(body).block(
             Block::default()

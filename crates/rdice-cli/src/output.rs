@@ -14,14 +14,26 @@ pub fn print_dice(engine: &DiceEngine) {
             DieKind::Builtin => "builtin",
             DieKind::Custom => "custom",
         };
-        let faces = die
-            .faces
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(", ");
+        let faces = format_die_faces(die.kind, &die.faces);
         println!("{} ({kind}): [{faces}]", die.name);
     }
+}
+
+fn format_die_faces(kind: DieKind, faces: &[FaceValue]) -> String {
+    if kind == DieKind::Builtin
+        && faces.len() > 20
+        && faces.iter().enumerate().all(
+            |(index, face)| matches!(face, FaceValue::Integer(value) if *value == index as i64 + 1),
+        )
+    {
+        return format!("1..{}", faces.len());
+    }
+
+    faces
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 pub fn print_roll_result(result: &RollBatchResult, modifiers: &[i64], mode: RollOutputMode) {

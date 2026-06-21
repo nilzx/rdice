@@ -66,6 +66,17 @@ fn cli_config_edit_creates_config_and_runs_editor() {
 }
 
 #[test]
+fn cli_list_compacts_large_builtin_numeric_dice() {
+    let path = unique_path("list-builtins");
+    let output = run_cli(&path, &["list"]);
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("D20 (builtin): [1, 2, 3"));
+    assert!(stdout.contains("D100 (builtin): [1..100]"));
+    assert!(!stdout.contains("97, 98, 99, 100"));
+}
+
+#[test]
 fn cli_roll_parses_mixed_expressions() {
     let path = unique_path("expr-roll");
     let output = run_cli(&path, &["roll", "3d6", "2d20", "5", "-3"]);

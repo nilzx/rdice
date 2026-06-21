@@ -62,6 +62,11 @@ fn tray_card_groups_numeric_dice_and_marks_hidden_text() {
 
 #[test]
 fn overview_grid_renders_only_existing_cards() {
+    assert_eq!(
+        render_grid_text(&[], 80),
+        "No trays on this page. Press m to manage trays."
+    );
+
     let one_card = vec![card(1, "default")];
     let one_grid = render_grid_text(&one_card, 80);
     assert_eq!(one_grid.matches("[1] default").count(), 1);

@@ -37,16 +37,28 @@ fn tui_storage_saves_and_loads_trays() {
     engine.roll_tray("test_tray").unwrap();
     engine.lock_slot("test_tray", 1).unwrap();
 
-    storage::save(&path, &engine).unwrap();
+    let history = vec![storage::RollHistoryEntry::from(
+        engine.show_tray("test_tray").unwrap(),
+    )];
+    storage::save_state(&path, &engine, &history).unwrap();
     assert!(path.exists());
 
-    let loaded = storage::load(&path).unwrap();
+    let state = storage::load_state(&path).unwrap();
+    let loaded = state.engine;
     assert_eq!(loaded.list_dice().len(), engine.list_dice().len());
     assert_eq!(loaded.list_trays().len(), 1);
     let tray = &loaded.list_trays()[0];
     assert_eq!(tray.slots.len(), 2);
     assert!(tray.slots[0].locked);
     assert_eq!(tray.next_slot_id, 3);
+    assert_eq!(state.history.len(), 1);
+    assert_eq!(state.history[0].tray_name, "test_tray");
+
+    let legacy_path = unique_path("legacy-state");
+    storage::save(&legacy_path, &engine).unwrap();
+    let legacy_loaded = storage::load(&legacy_path).unwrap();
+    assert_eq!(legacy_loaded.list_trays().len(), 1);
 
     let _ = std::fs::remove_file(path);
+    let _ = std::fs::remove_file(legacy_path);
 }

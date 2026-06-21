@@ -140,6 +140,8 @@ fn app_opens_tray_by_page_id_and_toggles_slot_lock() {
 #[test]
 fn face_parser_keeps_numbers_numeric_and_others_text() {
     assert_eq!(App::parse_face("-2"), FaceValue::Integer(-2));
+    assert_eq!(App::parse_face("+1"), FaceValue::Integer(1));
+    assert_eq!(App::parse_face("+"), FaceValue::Text("+".into()));
     assert_eq!(App::parse_face("heads"), FaceValue::Text("heads".into()));
 }
 
@@ -156,6 +158,32 @@ fn add_die_by_page_id_adds_to_current_tray() {
     let tray = app.engine.get_tray("combat").unwrap();
     assert_eq!(tray.slots.len(), 1);
     assert_eq!(tray.slots[0].die_name, "D4");
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn add_die_by_page_id_uses_add_die_page() {
+    let path = unique_path("add-die-page");
+    let mut app = empty_app("add-die-page");
+    app.state_path = path.clone();
+    app.engine
+        .create_die("alpha", vec![FaceValue::Integer(1)])
+        .unwrap();
+    app.engine
+        .create_die("beta", vec![FaceValue::Integer(1)])
+        .unwrap();
+    app.engine
+        .create_die("gamma", vec![FaceValue::Integer(1)])
+        .unwrap();
+    app.engine.create_tray("combat").unwrap();
+    app.screen = Screen::AddDie("combat".into());
+
+    app.next_page();
+    app.add_die_by_page_id(1).unwrap();
+
+    let tray = app.engine.get_tray("combat").unwrap();
+    assert_eq!(tray.slots.len(), 1);
+    assert_eq!(tray.slots[0].die_name, format!("{CUSTOM_PREFIX}gamma"));
     let _ = std::fs::remove_file(path);
 }
 
@@ -183,6 +211,62 @@ fn app_prefills_manager_commands_and_returns_from_add_die() {
     assert_eq!(app.command_buffer, Some("dice new ".into()));
 
     app.screen = Screen::AddDie("combat".into());
+    app.escape();
+    assert_eq!(app.screen, Screen::TrayDetail("combat".into()));
+}
+
+#[test]
+fn manager_prefill_uses_manager_pages() {
+    let mut app = empty_app("manager-pages");
+    for index in 1..=10 {
+        app.engine
+            .create_die(&format!("custom{index}"), vec![FaceValue::Integer(1)])
+            .unwrap();
+        app.engine.create_tray(&format!("tray{index}")).unwrap();
+    }
+
+    app.screen = Screen::DiceManager;
+    app.next_page();
+    app.prefill_edit_target(1).unwrap();
+    assert_eq!(app.command_buffer, Some("dice edit custom10 ".into()));
+
+    app.command_buffer = None;
+    app.screen = Screen::TrayManager;
+    app.next_page();
+    app.prefill_delete_target(1).unwrap();
+    assert_eq!(app.command_buffer, Some("tray delete tray10".into()));
+}
+
+#[test]
+fn rolling_trays_records_and_persists_history() {
+    let path = unique_path("history");
+    let mut app = empty_app("history");
+    app.state_path = path.clone();
+    app.engine.create_tray("combat").unwrap();
+    app.engine.add_die_to_tray("d6", "combat").unwrap();
+    app.screen = Screen::TrayDetail("combat".into());
+
+    app.roll_current_tray().unwrap();
+
+    assert_eq!(app.roll_history.len(), 1);
+    assert_eq!(app.roll_history[0].tray_name, "combat");
+    assert_eq!(app.roll_history[0].slots.len(), 1);
+
+    let loaded = App::load_from_path(path.clone()).unwrap();
+    assert_eq!(loaded.roll_history.len(), 1);
+    assert_eq!(loaded.roll_history[0].tray_name, "combat");
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn history_command_returns_to_previous_screen_once() {
+    let mut app = empty_app("history-return");
+    app.screen = Screen::TrayDetail("combat".into());
+
+    app.apply_command(Command::History).unwrap();
+    assert_eq!(app.screen, Screen::History);
+
+    app.apply_command(Command::History).unwrap();
     app.escape();
     assert_eq!(app.screen, Screen::TrayDetail("combat".into()));
 }

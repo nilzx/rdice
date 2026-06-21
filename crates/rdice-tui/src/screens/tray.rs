@@ -9,6 +9,10 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
         .engine
         .get_tray(tray_name)
         .map(|tray| {
+            if tray.slots.is_empty() {
+                return "No dice in this tray. Press a to add one.".to_string();
+            }
+
             tray.slots
                 .iter()
                 .map(|slot| {
@@ -43,11 +47,17 @@ pub fn render_add_die(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &
         .engine
         .list_dice()
         .iter()
+        .skip(app.add_die_page * 9)
         .take(9)
         .enumerate()
         .map(|(index, die)| format!("[{}] {}", index + 1, die.name))
         .collect::<Vec<_>>()
         .join("\n");
+    let body = if body.is_empty() {
+        "No dice on this page. Use PgUp/PgDn to navigate.".to_string()
+    } else {
+        body
+    };
 
     frame.render_widget(
         Paragraph::new(body).block(

@@ -5,9 +5,11 @@ use rdice_core::die::{CUSTOM_PREFIX, FaceValue};
 use rdice_core::error::{DiceError, Result};
 
 use crate::command::Command;
-use crate::storage;
+use crate::storage::{self, RollHistoryEntry};
 
 const DEFAULT_TRAY_NAME: &str = "default";
+const PAGE_SIZE: usize = 9;
+const MAX_HISTORY_ENTRIES: usize = 20;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Screen {
@@ -16,6 +18,7 @@ pub enum Screen {
     AddDie(String),
     DiceManager,
     TrayManager,
+    History,
 }
 
 #[derive(Debug)]
@@ -25,9 +28,13 @@ pub struct App {
     pub screen: Screen,
     pub selected_trays: Vec<String>,
     pub overview_page: usize,
+    pub add_die_page: usize,
+    pub dice_manager_page: usize,
+    pub tray_manager_page: usize,
     pub overview_text_visible: bool,
     pub overview_range_visible: bool,
     pub overview_ev_visible: bool,
+    pub roll_history: Vec<RollHistoryEntry>,
     pub command_buffer: Option<String>,
     pub message: Option<String>,
     pub manager_return: Option<Screen>,
@@ -41,20 +48,22 @@ impl App {
     }
 
     pub fn load_from_path(state_path: PathBuf) -> Result<Self> {
-        let mut engine = match storage::load(&state_path) {
-            Ok(engine) => engine,
+        let state = match storage::load_state(&state_path) {
+            Ok(state) => state,
             Err(err) => {
                 eprintln!("Warning: failed to load TUI state: {err}");
-                DiceEngine::new()
+                storage::StoredState::new(DiceEngine::new(), Vec::new())
             }
         };
+        let mut engine = state.engine;
 
         let needs_default_tray = engine.list_trays().is_empty();
         if needs_default_tray {
             engine.create_tray(DEFAULT_TRAY_NAME)?;
         }
 
-        let app = Self::new(engine, state_path);
+        let mut app = Self::new(engine, state_path);
+        app.roll_history = state.history;
         if needs_default_tray {
             app.save()?;
         }
@@ -69,9 +78,13 @@ impl App {
             screen: Screen::Overview,
             selected_trays: Vec::new(),
             overview_page: 0,
+            add_die_page: 0,
+            dice_manager_page: 0,
+            tray_manager_page: 0,
             overview_text_visible: false,
             overview_range_visible: false,
             overview_ev_visible: false,
+            roll_history: Vec::new(),
             command_buffer: None,
             message: None,
             manager_return: None,
@@ -80,7 +93,7 @@ impl App {
     }
 
     pub fn save(&self) -> Result<()> {
-        storage::save(&self.state_path, &self.engine)
+        storage::save_state(&self.state_path, &self.engine, &self.roll_history)
     }
 
     pub fn apply_command(&mut self, command: Command) -> Result<()> {
@@ -90,6 +103,12 @@ impl App {
             Command::Overview => {
                 self.manager_return = None;
                 self.screen = Screen::Overview;
+            }
+            Command::History => {
+                if self.screen != Screen::History {
+                    self.manager_return = Some(self.screen.clone());
+                    self.screen = Screen::History;
+                }
             }
             Command::OpenTray(name) => self.open_tray(name)?,
             Command::DiceNew { name, faces } => {
@@ -183,6 +202,7 @@ impl App {
 
         for tray_name in self.selected_trays.clone() {
             self.engine.roll_tray(&tray_name)?;
+            self.record_history(&tray_name)?;
         }
 
         self.save()?;
@@ -193,6 +213,7 @@ impl App {
     pub fn roll_current_tray(&mut self) -> Result<()> {
         let tray_name = self.current_tray_name()?;
         self.engine.roll_tray(&tray_name)?;
+        self.record_history(&tray_name)?;
         self.save()?;
         self.message = Some(format!("rolled tray {tray_name}"));
         Ok(())
@@ -248,22 +269,64 @@ impl App {
         let die_name = self
             .engine
             .list_dice()
-            .get(page_id - 1)
+            .get(self.add_die_page * PAGE_SIZE + page_id - 1)
             .map(|die| die.name.clone())
             .ok_or_else(|| DiceError::InvalidArguments(format!("no die for page id: {page_id}")))?;
         self.add_die_to_current_tray(&die_name)
     }
 
     pub fn previous_page(&mut self) {
-        self.overview_page = self.overview_page.saturating_sub(1);
-        self.message = Some(format!("page {}", self.overview_page + 1));
+        match self.screen {
+            Screen::Overview => {
+                self.overview_page = self.overview_page.saturating_sub(1);
+                self.message = Some(format!("page {}", self.overview_page + 1));
+            }
+            Screen::AddDie(_) => {
+                self.add_die_page = self.add_die_page.saturating_sub(1);
+                self.message = Some(format!("dice page {}", self.add_die_page + 1));
+            }
+            Screen::DiceManager => {
+                self.dice_manager_page = self.dice_manager_page.saturating_sub(1);
+                self.message = Some(format!("dice page {}", self.dice_manager_page + 1));
+            }
+            Screen::TrayManager => {
+                self.tray_manager_page = self.tray_manager_page.saturating_sub(1);
+                self.message = Some(format!("tray page {}", self.tray_manager_page + 1));
+            }
+            Screen::TrayDetail(_) => {}
+            Screen::History => {
+                self.message = Some("history has no pages".to_string());
+            }
+        }
     }
 
     pub fn next_page(&mut self) {
-        let tray_count = self.engine.list_trays().len();
-        let max_page = tray_count.saturating_sub(1) / 9;
-        self.overview_page = (self.overview_page + 1).min(max_page);
-        self.message = Some(format!("page {}", self.overview_page + 1));
+        match self.screen {
+            Screen::Overview => {
+                let max_page = max_page(self.engine.list_trays().len());
+                self.overview_page = (self.overview_page + 1).min(max_page);
+                self.message = Some(format!("page {}", self.overview_page + 1));
+            }
+            Screen::AddDie(_) => {
+                let max_page = max_page(self.engine.list_dice().len());
+                self.add_die_page = (self.add_die_page + 1).min(max_page);
+                self.message = Some(format!("dice page {}", self.add_die_page + 1));
+            }
+            Screen::DiceManager => {
+                let max_page = max_page(self.engine.custom_dice().len());
+                self.dice_manager_page = (self.dice_manager_page + 1).min(max_page);
+                self.message = Some(format!("dice page {}", self.dice_manager_page + 1));
+            }
+            Screen::TrayManager => {
+                let max_page = max_page(self.engine.list_trays().len());
+                self.tray_manager_page = (self.tray_manager_page + 1).min(max_page);
+                self.message = Some(format!("tray page {}", self.tray_manager_page + 1));
+            }
+            Screen::TrayDetail(_) => {}
+            Screen::History => {
+                self.message = Some("history has no pages".to_string());
+            }
+        }
     }
 
     pub fn toggle_text_visible(&mut self) {
@@ -318,12 +381,14 @@ impl App {
 
     pub fn open_tray_manager(&mut self) {
         self.manager_return = Some(self.screen.clone());
+        self.tray_manager_page = 0;
         self.screen = Screen::TrayManager;
         self.message = Some("tray manager".to_string());
     }
 
     pub fn open_dice_manager(&mut self) {
         self.manager_return = Some(self.screen.clone());
+        self.dice_manager_page = 0;
         self.screen = Screen::DiceManager;
         self.message = Some("dice manager".to_string());
     }
@@ -332,7 +397,7 @@ impl App {
         self.screen = match &self.screen {
             Screen::AddDie(tray_name) => Screen::TrayDetail(tray_name.clone()),
             Screen::TrayDetail(_) => Screen::Overview,
-            Screen::DiceManager | Screen::TrayManager => {
+            Screen::DiceManager | Screen::TrayManager | Screen::History => {
                 self.manager_return.take().unwrap_or(Screen::Overview)
             }
             Screen::Overview => Screen::Overview,
@@ -398,7 +463,11 @@ impl App {
             )));
         }
 
-        let index = self.overview_page * 9 + page_id - 1;
+        let page = match self.screen {
+            Screen::TrayManager => self.tray_manager_page,
+            _ => self.overview_page,
+        };
+        let index = page * PAGE_SIZE + page_id - 1;
         self.engine
             .list_trays()
             .get(index)
@@ -424,14 +493,26 @@ impl App {
 
         self.engine
             .custom_dice()
-            .get(page_id - 1)
+            .get(self.dice_manager_page * PAGE_SIZE + page_id - 1)
             .map(|die| display_custom_name(&die.name))
             .ok_or_else(|| DiceError::InvalidArguments(format!("no die for page id: {page_id}")))
+    }
+
+    fn record_history(&mut self, tray_name: &str) -> Result<()> {
+        let snapshot = self.engine.show_tray(tray_name)?;
+        self.roll_history
+            .insert(0, RollHistoryEntry::from(snapshot));
+        self.roll_history.truncate(MAX_HISTORY_ENTRIES);
+        Ok(())
     }
 }
 
 fn display_custom_name(name: &str) -> String {
     name.strip_prefix(CUSTOM_PREFIX).unwrap_or(name).to_string()
+}
+
+fn max_page(item_count: usize) -> usize {
+    item_count.saturating_sub(1) / PAGE_SIZE
 }
 
 fn default_state_path() -> Result<PathBuf> {

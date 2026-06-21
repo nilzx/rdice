@@ -8,6 +8,7 @@ fn parses_navigation_commands() {
         Command::ManagerTrays
     );
     assert_eq!(parse_command("overview").unwrap(), Command::Overview);
+    assert_eq!(parse_command("history").unwrap(), Command::History);
     assert_eq!(
         parse_command("tray combat").unwrap(),
         Command::OpenTray("combat".into())

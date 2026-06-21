@@ -14,12 +14,12 @@ The first TUI iteration includes:
 - Single tray detail page.
 - Custom die manager page.
 - Tray manager page.
+- Roll history page.
 - Command mode entered with `:`.
 - Persistent state through the existing `rdice-tui` storage layer.
 
 The first iteration does not include:
 
-- Roll history.
 - Search or fuzzy filtering.
 - Custom die edit forms.
 - Tray renaming.
@@ -82,6 +82,7 @@ r         roll selected trays; if none selected, no-op with a status message
 t         show/hide text results
 R         show/hide range annotations
 E         show/hide EV annotations
+h         open Roll History
 m         open Tray Manager
 PgUp      previous page
 PgDn      next page
@@ -107,6 +108,7 @@ r         roll current tray
 l<num>    lock/unlock slot
 d<num>    remove slot
 a         add die to current tray
+h         open Roll History
 m         open Dice Manager
 Esc       return to Overview
 :         command mode
@@ -125,6 +127,26 @@ Initial scope:
 - `PgUp` and `PgDn` change pages when needed.
 - `Esc` returns to the current tray detail page.
 - No search/filter in the first iteration.
+
+### Roll History
+
+Roll History shows the most recent tray rolls recorded by the TUI.
+
+Each entry shows:
+
+- Most recent rolls first.
+- Tray name.
+- Numeric total when one exists.
+- Slot values, including lock markers.
+
+The initial history keeps a bounded recent list and is persisted with the TUI
+state.
+
+Keys:
+
+```text
+Esc       return to the previous page
+```
 
 ### Dice Manager
 
@@ -199,6 +221,7 @@ Initial commands:
 ```text
 :manager dice
 :manager trays
+:history
 :overview
 :tray <name>
 :dice new <name> <faces...>

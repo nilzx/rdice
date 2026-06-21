@@ -158,7 +158,7 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
 
 pub fn render_grid_text(cards: &[TrayCard], width: u16) -> String {
     if cards.is_empty() {
-        return String::new();
+        return "No trays on this page. Press m to manage trays.".to_string();
     }
 
     let columns = 3_usize;

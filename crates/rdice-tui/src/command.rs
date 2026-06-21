@@ -5,6 +5,7 @@ pub enum Command {
     ManagerDice,
     ManagerTrays,
     Overview,
+    History,
     OpenTray(String),
     DiceNew { name: String, faces: Vec<String> },
     DiceDelete(String),
@@ -25,6 +26,7 @@ pub fn parse_command(input: &str) -> Result<Command> {
         ["manager", "dice"] => Ok(Command::ManagerDice),
         ["manager", "trays"] => Ok(Command::ManagerTrays),
         ["overview"] => Ok(Command::Overview),
+        ["history"] => Ok(Command::History),
         ["tray", name] => Ok(Command::OpenTray((*name).to_string())),
         ["dice", "new", name, faces @ ..] if !faces.is_empty() => Ok(Command::DiceNew {
             name: (*name).to_string(),
