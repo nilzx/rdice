@@ -1,0 +1,21 @@
+[package]
+name = "rdice-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Command-line dice roller powered by rdice-core"
+readme = "README.md"
+documentation = "https://docs.rs/rdice-cli"
+keywords = ["dice", "cli", "roller", "tabletop", "ttrpg"]
+categories = ["command-line-utilities", "games"]
+
+[[bin]]
+name = "rdice"
+path = "src/main.rs"
+
+[dependencies]
+rdice-core.workspace = true
+dirs.workspace = true
+toml.workspace = true
+serde.workspace = true

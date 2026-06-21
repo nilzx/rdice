@@ -1,0 +1,11 @@
+/target
+.claude
+gemini*
+.vscode
+**/*.rs.bk
+*.swp
+*.swo
+*.db
+*.pdb
+.worktrees/
+.DS_Store

@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "crates/rdice-core",
+    "crates/rdice-cli",
+    "crates/rdice-tui",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+
+[workspace.dependencies]
+rand = "0.10.1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+toml = "1.1.2"
+dirs = "6"
+rdice-core = { version = "0.1.0", path = "crates/rdice-core" }

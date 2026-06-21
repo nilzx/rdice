@@ -1,0 +1,26 @@
+[package]
+name = "rdice-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Reusable dice, tray, expression parsing, rolling, and analysis primitives"
+license = "MIT"
+readme = "README.md"
+documentation = "https://docs.rs/rdice-core"
+keywords = ["dice", "roller", "random", "tabletop", "ttrpg"]
+categories = ["games", "parsing"]
+include = [
+    "src/**",
+    "tests/**",
+    "Cargo.toml",
+    "README.md",
+]
+
+[lib]
+name = "rdice_core"
+path = "src/lib.rs"
+
+[dependencies]
+rand = "0.10.1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"

@@ -1,0 +1,23 @@
+[package]
+name = "rdice-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Terminal UI for persistent dice trays powered by rdice-core"
+readme = "README.md"
+documentation = "https://docs.rs/rdice-tui"
+keywords = ["dice", "tui", "terminal", "tabletop", "ttrpg"]
+categories = ["command-line-utilities", "games"]
+
+[[bin]]
+name = "rdice-tui"
+path = "src/main.rs"
+
+[dependencies]
+rdice-core.workspace = true
+crossterm = "0.29"
+dirs.workspace = true
+ratatui = "0.30"
+serde.workspace = true
+toml.workspace = true
