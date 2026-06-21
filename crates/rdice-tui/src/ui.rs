@@ -46,7 +46,7 @@ pub fn footer_text(app: &App, width: usize) -> String {
     let feedback = app
         .command_buffer
         .as_ref()
-        .map(|buffer| format!(":{buffer}"))
+        .map(|buffer| format!("COMMAND: {buffer}  Enter apply  Esc cancel"))
         .or_else(|| app.message.clone())
         .unwrap_or_default();
     let help = help_text(app);

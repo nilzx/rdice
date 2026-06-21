@@ -5,6 +5,17 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use crate::app::App;
 
 pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
+    frame.render_widget(
+        Paragraph::new(render_text(app)).block(
+            Block::default()
+                .title(" Dice Manager ")
+                .borders(Borders::ALL),
+        ),
+        area,
+    );
+}
+
+pub fn render_text(app: &App) -> String {
     let body = app
         .engine
         .custom_dice()
@@ -14,21 +25,20 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
         .enumerate()
         .map(|(index, die)| {
             let name = die.name.strip_prefix("✽").unwrap_or(&die.name);
-            format!("[{}] {}: {} faces", index + 1, name, die.faces.len())
+            let global_id = app.dice_manager_page * 9 + index + 1;
+            format!(
+                "[{}|{}] {}: {} faces",
+                global_id,
+                index + 1,
+                name,
+                die.faces.len()
+            )
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let body = if body.is_empty() {
+    if body.is_empty() {
         "No custom dice. Press n to create one.".to_string()
     } else {
         body
-    };
-    frame.render_widget(
-        Paragraph::new(body).block(
-            Block::default()
-                .title(" Dice Manager ")
-                .borders(Borders::ALL),
-        ),
-        area,
-    );
+    }
 }

@@ -37,3 +37,18 @@ fn footer_prioritizes_feedback_on_narrow_width() {
 
     assert_eq!(footer, "added D6 t");
 }
+
+#[test]
+fn footer_labels_command_mode_with_actions() {
+    let mut app = App::new(
+        DiceEngine::new(),
+        std::env::temp_dir().join("rdice-ui-test.toml"),
+    );
+    app.command_buffer = Some("dice edit c10 ".into());
+
+    let footer = footer_text(&app, 80);
+
+    assert!(footer.contains("COMMAND: dice edit c10 "));
+    assert!(footer.contains("Enter apply"));
+    assert!(footer.contains("Esc cancel"));
+}

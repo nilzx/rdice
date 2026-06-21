@@ -124,8 +124,12 @@ Initial scope:
 
 - Show available dice in a paged numbered list.
 - `1-9` adds the matching die on the current page.
+- Item labels show both global position and page-local shortcut, for example
+  `[10|1]`.
 - `PgUp` and `PgDn` change pages when needed.
 - `Esc` returns to the current tray detail page.
+- `r` returns to the tray detail page with a status message rather than rolling
+  from the add-die picker.
 - No search/filter in the first iteration.
 
 ### Roll History
@@ -159,6 +163,10 @@ First iteration capabilities:
 - Delete custom dice through command mode.
 - Edit custom dice through command mode.
 - Use manager shortcuts to prefill commands.
+- Editing a custom die clears current values in tray slots that reference that
+  die, so stale roll results do not remain attached to changed die definitions.
+- Item labels show both global position and page-local shortcut, for example
+  `[10|1]`.
 
 Keys:
 
@@ -178,7 +186,7 @@ Commands:
 :dice edit <name> <faces...>
 ```
 
-Face parsing follows the CLI/core convention: integer-looking faces become numeric faces; all other faces become text faces.
+Face parsing follows the CLI/core convention: integer-looking faces become numeric faces; all other faces become text faces. A standalone `+` is a text face; `+1` is numeric `1`.
 
 ### Tray Manager
 
@@ -191,6 +199,8 @@ First iteration capabilities:
 - Delete trays through command mode.
 - Rename trays through command mode.
 - Use manager shortcuts to prefill commands.
+- Item labels show both global position and page-local shortcut, for example
+  `[10|1]`.
 
 Keys:
 
@@ -214,7 +224,7 @@ Commands:
 
 Command mode is entered with `:`. It supports global navigation and manager operations.
 
-The footer is screen-aware. Its left side is reserved for command input, key-prefix feedback such as `open` or `lock/unlock`, and command/action results such as `added D6 to combat`. Its right side shows the current screen's shortcuts. On narrow terminals, feedback takes priority over shortcut help.
+The footer is screen-aware. Its left side is reserved for command input, key-prefix feedback such as `open` or `lock/unlock`, and command/action results such as `added D6 to combat`. Command input is prefixed with `COMMAND:` and names the action keys: `Enter apply` and `Esc cancel`. Its right side shows the current screen's shortcuts. On narrow terminals, feedback takes priority over shortcut help.
 
 Initial commands:
 

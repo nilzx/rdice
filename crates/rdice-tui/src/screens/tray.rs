@@ -43,6 +43,17 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
 }
 
 pub fn render_add_die(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
+    frame.render_widget(
+        Paragraph::new(render_add_die_text(app)).block(
+            Block::default()
+                .title(format!(" Add die to {tray_name} "))
+                .borders(Borders::ALL),
+        ),
+        area,
+    );
+}
+
+pub fn render_add_die_text(app: &App) -> String {
     let body = app
         .engine
         .list_dice()
@@ -50,21 +61,15 @@ pub fn render_add_die(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &
         .skip(app.add_die_page * 9)
         .take(9)
         .enumerate()
-        .map(|(index, die)| format!("[{}] {}", index + 1, die.name))
+        .map(|(index, die)| {
+            let global_id = app.add_die_page * 9 + index + 1;
+            format!("[{}|{}] {}", global_id, index + 1, die.name)
+        })
         .collect::<Vec<_>>()
         .join("\n");
-    let body = if body.is_empty() {
+    if body.is_empty() {
         "No dice on this page. Use PgUp/PgDn to navigate.".to_string()
     } else {
         body
-    };
-
-    frame.render_widget(
-        Paragraph::new(body).block(
-            Block::default()
-                .title(format!(" Add die to {tray_name} "))
-                .borders(Borders::ALL),
-        ),
-        area,
-    );
+    }
 }

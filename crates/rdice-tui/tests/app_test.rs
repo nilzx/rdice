@@ -107,6 +107,45 @@ fn app_edits_custom_die_and_renames_tray() {
 }
 
 #[test]
+fn editing_custom_die_clears_current_values_for_referencing_slots() {
+    let path = unique_path("edit-clear");
+    let mut app = empty_app("edit-clear");
+    app.state_path = path.clone();
+    app.apply_command(Command::DiceNew {
+        name: "fate".into(),
+        faces: vec!["1".into(), "2".into()],
+    })
+    .unwrap();
+    app.engine.create_tray("combat").unwrap();
+    app.engine.add_die_to_tray("fate", "combat").unwrap();
+    app.engine.roll_tray("combat").unwrap();
+    assert!(
+        app.engine.get_tray("combat").unwrap().slots[0]
+            .current_value
+            .is_some()
+    );
+
+    app.apply_command(Command::DiceEdit {
+        name: "fate".into(),
+        faces: vec!["+".into()],
+    })
+    .unwrap();
+
+    assert!(
+        app.engine.get_tray("combat").unwrap().slots[0]
+            .current_value
+            .is_none()
+    );
+    assert!(
+        app.message
+            .as_deref()
+            .unwrap_or_default()
+            .contains("cleared 1 slot")
+    );
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
 fn app_toggles_overview_selection_by_page_id() {
     let path = unique_path("selection");
     let mut app = empty_app("selection");
@@ -255,6 +294,27 @@ fn rolling_trays_records_and_persists_history() {
     let loaded = App::load_from_path(path.clone()).unwrap();
     assert_eq!(loaded.roll_history.len(), 1);
     assert_eq!(loaded.roll_history[0].tray_name, "combat");
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_from_add_die_screen_returns_to_tray_without_rolling() {
+    let path = unique_path("add-die-roll");
+    let mut app = empty_app("add-die-roll");
+    app.state_path = path.clone();
+    app.engine.create_tray("combat").unwrap();
+    app.engine.add_die_to_tray("d6", "combat").unwrap();
+    app.screen = Screen::AddDie("combat".into());
+
+    app.roll_from_current_screen().unwrap();
+
+    assert_eq!(app.screen, Screen::TrayDetail("combat".into()));
+    assert!(
+        app.engine.get_tray("combat").unwrap().slots[0]
+            .current_value
+            .is_none()
+    );
+    assert_eq!(app.message, Some("return to tray before rolling".into()));
     let _ = std::fs::remove_file(path);
 }
 

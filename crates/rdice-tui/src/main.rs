@@ -133,13 +133,7 @@ fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
             _ => {}
         },
         InputAction::OpenTray(id) => app.open_tray_by_page_id(id)?,
-        InputAction::Roll => match app.screen {
-            rdice_tui::app::Screen::Overview => app.roll_selected_trays()?,
-            rdice_tui::app::Screen::TrayDetail(_) | rdice_tui::app::Screen::AddDie(_) => {
-                app.roll_current_tray()?
-            }
-            _ => {}
-        },
+        InputAction::Roll => app.roll_from_current_screen()?,
         InputAction::ToggleText => app.toggle_text_visible(),
         InputAction::ToggleRange => app.toggle_range_visible(),
         InputAction::ToggleEv => app.toggle_ev_visible(),

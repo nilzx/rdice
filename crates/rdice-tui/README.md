@@ -53,6 +53,9 @@ Esc       return to overview
 :         command mode
 ```
 
+Command mode shows `COMMAND:` in the footer. Press `Enter` to apply the command
+or `Esc` to cancel it.
+
 Commands:
 
 ```text

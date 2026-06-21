@@ -125,8 +125,11 @@ impl App {
             Command::DiceEdit { name, faces } => {
                 let faces = faces.iter().map(|face| Self::parse_face(face)).collect();
                 self.engine.modify_die(&name, faces)?;
+                let cleared_slots = self.clear_current_values_for_die(&name)?;
                 self.save()?;
-                self.message = Some(format!("edited die {name}"));
+                self.message = Some(format!(
+                    "edited die {name}; cleared {cleared_slots} slot value(s)"
+                ));
             }
             Command::TrayNew(name) => {
                 self.engine.create_tray(&name)?;
@@ -217,6 +220,19 @@ impl App {
         self.save()?;
         self.message = Some(format!("rolled tray {tray_name}"));
         Ok(())
+    }
+
+    pub fn roll_from_current_screen(&mut self) -> Result<()> {
+        match &self.screen {
+            Screen::Overview => self.roll_selected_trays(),
+            Screen::TrayDetail(_) => self.roll_current_tray(),
+            Screen::AddDie(tray_name) => {
+                self.screen = Screen::TrayDetail(tray_name.clone());
+                self.message = Some("return to tray before rolling".to_string());
+                Ok(())
+            }
+            Screen::DiceManager | Screen::TrayManager | Screen::History => Ok(()),
+        }
     }
 
     pub fn toggle_slot_lock(&mut self, slot_id: u32) -> Result<()> {
@@ -504,6 +520,26 @@ impl App {
             .insert(0, RollHistoryEntry::from(snapshot));
         self.roll_history.truncate(MAX_HISTORY_ENTRIES);
         Ok(())
+    }
+
+    fn clear_current_values_for_die(&mut self, die_name: &str) -> Result<usize> {
+        let resolved = self
+            .engine
+            .resolve_die_name(die_name)
+            .ok_or_else(|| DiceError::DieNotFound(die_name.to_string()))?;
+        let mut cleared = 0;
+        let mut trays = self.engine.trays().to_vec();
+
+        for tray in &mut trays {
+            for slot in &mut tray.slots {
+                if slot.die_name == resolved && slot.current_value.take().is_some() {
+                    cleared += 1;
+                }
+            }
+        }
+
+        self.engine.set_trays(trays);
+        Ok(cleared)
     }
 }
 
