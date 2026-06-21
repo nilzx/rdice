@@ -9,7 +9,7 @@ use rdice_core::DiceEngine;
 use rdice_core::error::{DiceError, Result};
 use rdice_core::expr::parse_roll_exprs;
 
-use crate::output::RollOutputMode;
+use crate::output::{OutputStyle, RollOutputMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 struct AnalysisOptions {
@@ -31,14 +31,17 @@ struct RollArgs {
 }
 
 fn main() {
-    if let Err(err) = run() {
-        eprintln!("Error: {err}");
+    let raw_args: Vec<String> = std::env::args().skip(1).collect();
+    let style = OutputStyle::new(output::color_enabled_from(&raw_args));
+
+    if let Err(err) = run(raw_args, style) {
+        output::print_error(&err, style);
         std::process::exit(1);
     }
 }
 
-fn run() -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+fn run(raw_args: Vec<String>, style: OutputStyle) -> Result<()> {
+    let args = parse_global_args(raw_args)?;
     let mut engine = DiceEngine::new();
     let config_path = default_config_path()?;
 
@@ -54,7 +57,12 @@ fn run() -> Result<()> {
     {
         let parsed = parse_expr_args(&expr)?;
         let analysis = engine.analyze_roll(&parsed.dice, &parsed.modifiers)?;
-        output::print_analysis(&analysis, analysis_options.expected, analysis_options.range);
+        output::print_analysis(
+            &analysis,
+            analysis_options.expected,
+            analysis_options.range,
+            style,
+        );
         return Ok(());
     }
 
@@ -68,7 +76,7 @@ fn run() -> Result<()> {
             Ok(())
         }
         [command] if command == "list" => {
-            output::print_dice(&engine);
+            output::print_dice(&engine, style);
             Ok(())
         }
         [command] if command == "config" => {
@@ -83,13 +91,14 @@ fn run() -> Result<()> {
             let roll_args = parse_roll_args(args)?;
             let parsed = parse_expr_args(&roll_args.expr)?;
             let result = engine.roll_dice(&parsed.dice)?;
-            output::print_roll_result(&result, &parsed.modifiers, roll_args.mode);
+            output::print_roll_result(&result, &parsed.modifiers, roll_args.mode, style);
             if roll_args.analysis.any() {
                 let analysis = engine.analyze_roll(&parsed.dice, &parsed.modifiers)?;
                 output::print_analysis(
                     &analysis,
                     roll_args.analysis.expected,
                     roll_args.analysis.range,
+                    style,
                 );
             }
             Ok(())
@@ -101,6 +110,17 @@ fn run() -> Result<()> {
             "unknown command: {command}"
         ))),
     }
+}
+
+fn parse_global_args(args: Vec<String>) -> Result<Vec<String>> {
+    let mut parsed = Vec::new();
+    for arg in args {
+        match arg.as_str() {
+            "--no-color" => {}
+            _ => parsed.push(arg),
+        }
+    }
+    Ok(parsed)
 }
 
 fn edit_config(config_path: &PathBuf) -> Result<()> {
@@ -276,8 +296,12 @@ fn print_help() {
     println!("  rdice list");
     println!("  rdice config path");
     println!("  rdice config edit");
-    println!("  rdice help");
+    println!("  rdice help [--no-color]");
+    println!();
+    println!("Options:");
+    println!("  --no-color        Disable ANSI color output");
     println!();
     println!("Environment:");
     println!("  RDICE_CONFIG_PATH  Path to rdice config TOML");
+    println!("  NO_COLOR           Disable ANSI color output");
 }

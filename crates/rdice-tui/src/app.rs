@@ -21,10 +21,49 @@ pub enum Screen {
     History,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DiceCreationStep {
+    Name,
+    FaceCount,
+    Face,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiceCreationWizard {
+    pub step: DiceCreationStep,
+    pub name: String,
+    pub face_count: String,
+    pub faces: Vec<String>,
+    pub current_face: String,
+    pub error: Option<String>,
+}
+
+impl DiceCreationWizard {
+    fn new() -> Self {
+        Self {
+            step: DiceCreationStep::Name,
+            name: String::new(),
+            face_count: String::new(),
+            faces: Vec::new(),
+            current_face: String::new(),
+            error: None,
+        }
+    }
+
+    pub fn target_face_count(&self) -> Option<usize> {
+        self.face_count.trim().parse::<usize>().ok()
+    }
+
+    pub fn current_face_number(&self) -> usize {
+        self.faces.len() + 1
+    }
+}
+
 #[derive(Debug)]
 pub struct App {
     pub engine: DiceEngine,
     pub state_path: PathBuf,
+    pub color_enabled: bool,
     pub screen: Screen,
     pub selected_trays: Vec<String>,
     pub overview_page: usize,
@@ -35,6 +74,7 @@ pub struct App {
     pub overview_range_visible: bool,
     pub overview_ev_visible: bool,
     pub roll_history: Vec<RollHistoryEntry>,
+    pub dice_creation: Option<DiceCreationWizard>,
     pub command_buffer: Option<String>,
     pub message: Option<String>,
     pub manager_return: Option<Screen>,
@@ -72,9 +112,14 @@ impl App {
     }
 
     pub fn new(engine: DiceEngine, state_path: PathBuf) -> Self {
+        Self::new_with_color(engine, state_path, crate::theme::color_enabled_from_env())
+    }
+
+    pub fn new_with_color(engine: DiceEngine, state_path: PathBuf, color_enabled: bool) -> Self {
         Self {
             engine,
             state_path,
+            color_enabled,
             screen: Screen::Overview,
             selected_trays: Vec::new(),
             overview_page: 0,
@@ -85,6 +130,7 @@ impl App {
             overview_range_visible: false,
             overview_ev_visible: false,
             roll_history: Vec::new(),
+            dice_creation: None,
             command_buffer: None,
             message: None,
             manager_return: None,
@@ -376,15 +422,113 @@ impl App {
     }
 
     pub fn enter_command_mode(&mut self) {
+        self.dice_creation = None;
         self.command_buffer = Some(String::new());
     }
 
     pub fn prefill_command(&mut self, command: impl Into<String>) {
+        self.dice_creation = None;
         self.command_buffer = Some(command.into());
     }
 
     pub fn leave_command_mode(&mut self) {
         self.command_buffer = None;
+    }
+
+    pub fn start_dice_creation(&mut self) {
+        self.command_buffer = None;
+        self.message = None;
+        self.dice_creation = Some(DiceCreationWizard::new());
+    }
+
+    pub fn cancel_dice_creation(&mut self) {
+        self.dice_creation = None;
+        self.message = Some("cancelled new die".to_string());
+    }
+
+    pub fn push_dice_creation_char(&mut self, ch: char) {
+        if let Some(wizard) = &mut self.dice_creation {
+            wizard.error = None;
+            match wizard.step {
+                DiceCreationStep::Name => wizard.name.push(ch),
+                DiceCreationStep::FaceCount => wizard.face_count.push(ch),
+                DiceCreationStep::Face => wizard.current_face.push(ch),
+            }
+        }
+    }
+
+    pub fn backspace_dice_creation(&mut self) {
+        if let Some(wizard) = &mut self.dice_creation {
+            wizard.error = None;
+            match wizard.step {
+                DiceCreationStep::Name => {
+                    wizard.name.pop();
+                }
+                DiceCreationStep::FaceCount => {
+                    wizard.face_count.pop();
+                }
+                DiceCreationStep::Face => {
+                    wizard.current_face.pop();
+                }
+            }
+        }
+    }
+
+    pub fn advance_dice_creation(&mut self) -> Result<()> {
+        let Some(wizard) = &mut self.dice_creation else {
+            return Ok(());
+        };
+        wizard.error = None;
+
+        match wizard.step {
+            DiceCreationStep::Name => {
+                let name = wizard.name.trim();
+                if name.is_empty() || name.chars().any(char::is_whitespace) {
+                    wizard.error = Some("name cannot be empty or contain spaces".to_string());
+                    return Ok(());
+                }
+                wizard.name = name.to_string();
+                wizard.step = DiceCreationStep::FaceCount;
+            }
+            DiceCreationStep::FaceCount => {
+                let count = wizard.face_count.trim().parse::<usize>().ok();
+                if !matches!(count, Some(count) if count > 0) {
+                    wizard.error = Some("face count must be a positive number".to_string());
+                    return Ok(());
+                }
+                wizard.face_count = count.expect("checked Some").to_string();
+                wizard.step = DiceCreationStep::Face;
+            }
+            DiceCreationStep::Face => {
+                let face = wizard.current_face.trim();
+                if face.is_empty() {
+                    wizard.error = Some("face cannot be empty".to_string());
+                    return Ok(());
+                }
+                wizard.faces.push(face.to_string());
+                wizard.current_face.clear();
+
+                let target_count = wizard
+                    .target_face_count()
+                    .expect("face step has a validated face count");
+                if wizard.faces.len() < target_count {
+                    return Ok(());
+                }
+
+                let name = wizard.name.clone();
+                let faces = wizard
+                    .faces
+                    .iter()
+                    .map(|face| Self::parse_face(face))
+                    .collect::<Vec<_>>();
+                self.engine.create_die(&name, faces)?;
+                self.save()?;
+                self.dice_creation = None;
+                self.message = Some(format!("created die {name}"));
+            }
+        }
+
+        Ok(())
     }
 
     pub fn open_context_manager(&mut self) {
@@ -424,7 +568,7 @@ impl App {
     pub fn prefill_new_target(&mut self) -> Result<()> {
         match &self.screen {
             Screen::TrayManager => self.prefill_command("tray new "),
-            Screen::DiceManager => self.prefill_command("dice new "),
+            Screen::DiceManager => self.start_dice_creation(),
             _ => {
                 return Err(DiceError::InvalidArguments(
                     "new is only available in manager pages".to_string(),

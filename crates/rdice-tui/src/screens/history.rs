@@ -4,14 +4,19 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::App;
 use crate::storage::RollHistoryEntry;
+use crate::theme;
 
 pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
     frame.render_widget(
-        Paragraph::new(render_history_text(&app.roll_history)).block(
-            Block::default()
-                .title(" Roll History ")
-                .borders(Borders::ALL),
-        ),
+        Paragraph::new(render_history_text(&app.roll_history))
+            .style(theme::content(app.color_enabled))
+            .block(
+                Block::default()
+                    .title(" Roll History ")
+                    .title_style(theme::title(app.color_enabled))
+                    .borders(Borders::ALL)
+                    .border_style(theme::border(app.color_enabled)),
+            ),
         area,
     );
 }

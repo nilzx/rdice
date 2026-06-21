@@ -47,6 +47,12 @@ fn manager_key_opens_contextual_manager() {
 }
 
 #[test]
+fn custom_dice_key_opens_dice_manager() {
+    let mut state = InputState::default();
+    assert_eq!(state.push('c'), Some(InputAction::OpenDiceManager));
+}
+
+#[test]
 fn manager_shortcuts_start_new_and_edit_targets() {
     let mut state = InputState::default();
     assert_eq!(state.push('n'), Some(InputAction::NewTarget));

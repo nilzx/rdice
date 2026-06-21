@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use rdice_core::die::{CUSTOM_PREFIX, FaceValue};
 use rdice_core::engine::DiceEngine;
 use rdice_core::error::Result;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::app::App;
+use crate::theme;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OverviewOptions {
@@ -153,7 +156,68 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
     let cards = build_tray_cards(&app.engine, &app.selected_trays, app.overview_page, options)
         .unwrap_or_default();
 
-    frame.render_widget(Paragraph::new(render_grid_text(&cards, area.width)), area);
+    frame.render_widget(
+        Paragraph::new(render_grid_lines(&cards, area.width, app.color_enabled))
+            .style(theme::overview(app.color_enabled)),
+        area,
+    );
+}
+
+fn render_grid_lines(cards: &[TrayCard], width: u16, color_enabled: bool) -> Vec<Line<'static>> {
+    render_grid_text(cards, width)
+        .lines()
+        .enumerate()
+        .map(|(index, line)| style_grid_line(line, index % 6, color_enabled))
+        .collect()
+}
+
+fn style_grid_line(line: &str, row_line_index: usize, color_enabled: bool) -> Line<'static> {
+    if line.starts_with('+') {
+        return Line::from(Span::styled(line.to_string(), theme::border(color_enabled)));
+    }
+
+    let content_style = match row_line_index {
+        1 => theme::name(color_enabled),
+        2 => theme::muted(color_enabled),
+        3 => theme::value(color_enabled),
+        4 => theme::text_value(color_enabled),
+        _ => theme::content(color_enabled),
+    };
+
+    let mut spans = Vec::new();
+    let mut chars = line.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '|' => spans.push(Span::styled("|".to_string(), theme::border(color_enabled))),
+            '[' => {
+                let mut token = String::from("[");
+                for next in chars.by_ref() {
+                    token.push(next);
+                    if next == ']' {
+                        break;
+                    }
+                }
+                spans.push(Span::styled(token, theme::shortcut(color_enabled)));
+            }
+            '*' => spans.push(Span::styled(
+                "*".to_string(),
+                theme::selected(color_enabled),
+            )),
+            _ => {
+                let mut text = ch.to_string();
+                while let Some(next) = chars.peek().copied() {
+                    if matches!(next, '|' | '[' | '*') {
+                        break;
+                    }
+                    text.push(next);
+                    chars.next();
+                }
+                spans.push(Span::styled(text, content_style));
+            }
+        }
+    }
+
+    Line::from(spans)
 }
 
 pub fn render_grid_text(cards: &[TrayCard], width: u16) -> String {
@@ -211,24 +275,30 @@ fn right_align_text_marker(line: &str, width: usize) -> String {
     let Some(base) = line.strip_suffix(" +t") else {
         return line.to_string();
     };
-    if base.len() + 3 >= width {
-        return line.to_string();
+    let base_width = UnicodeWidthStr::width(base);
+    let marker_width = UnicodeWidthStr::width("+t");
+    if base_width + 1 + marker_width >= width {
+        return truncate(base, width);
     }
-    format!("{base}{}+t", " ".repeat(width - base.len() - 2))
+    format!("{base}{}+t", " ".repeat(width - base_width - marker_width))
 }
 
 fn pad_cell(text: &str, width: usize) -> String {
     let truncated = truncate(text, width);
-    format!("{truncated:<width$}")
+    let padding = width.saturating_sub(UnicodeWidthStr::width(truncated.as_str()));
+    format!("{truncated}{}", " ".repeat(padding))
 }
 
 fn truncate(text: &str, width: usize) -> String {
     let mut output = String::new();
+    let mut used_width = 0;
     for ch in text.chars() {
-        if output.len() + ch.len_utf8() > width {
+        let ch_width = ch.width().unwrap_or(0);
+        if used_width + ch_width > width {
             break;
         }
         output.push(ch);
+        used_width += ch_width;
     }
     output
 }

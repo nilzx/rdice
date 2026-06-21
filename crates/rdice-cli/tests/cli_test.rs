@@ -23,6 +23,24 @@ fn run_cli(config_path: &PathBuf, args: &[&str]) -> std::process::Output {
         .expect("failed to run rdice")
 }
 
+fn run_cli_without_no_color(config_path: &PathBuf, args: &[&str]) -> std::process::Output {
+    Command::new(bin_path())
+        .env("RDICE_CONFIG_PATH", config_path)
+        .env_remove("NO_COLOR")
+        .args(args)
+        .output()
+        .expect("failed to run rdice")
+}
+
+fn run_cli_with_no_color_env(config_path: &PathBuf, args: &[&str]) -> std::process::Output {
+    Command::new(bin_path())
+        .env("RDICE_CONFIG_PATH", config_path)
+        .env("NO_COLOR", "1")
+        .args(args)
+        .output()
+        .expect("failed to run rdice")
+}
+
 fn run_cli_with_editor(config_path: &PathBuf, editor: &str, args: &[&str]) -> std::process::Output {
     Command::new(bin_path())
         .env("RDICE_CONFIG_PATH", config_path)
@@ -31,6 +49,27 @@ fn run_cli_with_editor(config_path: &PathBuf, editor: &str, args: &[&str]) -> st
         .args(args)
         .output()
         .expect("failed to run rdice")
+}
+
+#[test]
+fn cli_list_uses_color_by_default_and_can_disable_it() {
+    let path = unique_path("color-list");
+
+    let colored = run_cli_without_no_color(&path, &["list"]);
+    assert!(colored.status.success());
+    let stdout = String::from_utf8_lossy(&colored.stdout);
+    assert!(stdout.contains("\x1b["));
+    assert!(stdout.contains("D20 (builtin):"));
+
+    let no_color_flag = run_cli_without_no_color(&path, &["--no-color", "list"]);
+    assert!(no_color_flag.status.success());
+    let stdout = String::from_utf8_lossy(&no_color_flag.stdout);
+    assert!(!stdout.contains("\x1b["));
+
+    let no_color_env = run_cli_with_no_color_env(&path, &["list"]);
+    assert!(no_color_env.status.success());
+    let stdout = String::from_utf8_lossy(&no_color_env.stdout);
+    assert!(!stdout.contains("\x1b["));
 }
 
 #[test]

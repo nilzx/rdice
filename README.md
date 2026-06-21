@@ -87,7 +87,7 @@ rdice [-E|--ev] [-R|--range] <dice-expr...>
 rdice list
 rdice config path
 rdice config edit
-rdice help
+rdice help [--no-color]
 ```
 
 Examples:
@@ -98,6 +98,10 @@ rdice roll -x 4d6
 rdice roll -f -E -R 3d13 2coin 5 -3
 rdice -E -R 3d6 5 -3
 ```
+
+CLI output uses ANSI colors by default. Pass `--no-color` or set `NO_COLOR` to
+disable color output for scripts and plain-text logs. The TUI also respects
+`NO_COLOR`.
 
 Custom dice are loaded from `RDICE_CONFIG_PATH` when set, otherwise from:
 

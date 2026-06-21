@@ -68,6 +68,11 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Re
 }
 
 fn handle_key(app: &mut App, input: &mut InputState, key: KeyEvent) -> Result<()> {
+    if app.dice_creation.is_some() {
+        handle_dice_creation_key(app, key);
+        return Ok(());
+    }
+
     if app.command_buffer.is_some() {
         handle_command_key(app, key);
         return Ok(());
@@ -100,6 +105,24 @@ fn handle_key(app: &mut App, input: &mut InputState, key: KeyEvent) -> Result<()
     Ok(())
 }
 
+fn handle_dice_creation_key(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => app.cancel_dice_creation(),
+        KeyCode::Enter => {
+            if let Err(err) = app.advance_dice_creation() {
+                if let Some(wizard) = &mut app.dice_creation {
+                    wizard.error = Some(err.to_string());
+                } else {
+                    app.message = Some(err.to_string());
+                }
+            }
+        }
+        KeyCode::Backspace => app.backspace_dice_creation(),
+        KeyCode::Char(ch) => app.push_dice_creation_char(ch),
+        _ => {}
+    }
+}
+
 fn handle_command_key(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc => app.leave_command_mode(),
@@ -112,7 +135,9 @@ fn handle_command_key(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::Backspace => {
-            if let Some(buffer) = &mut app.command_buffer {
+            if let Some(buffer) = &mut app.command_buffer
+                && buffer.len() > guided_command_prefix_len(buffer)
+            {
                 buffer.pop();
             }
         }
@@ -123,6 +148,19 @@ fn handle_command_key(app: &mut App, key: KeyEvent) {
         }
         _ => {}
     }
+}
+
+fn guided_command_prefix_len(buffer: &str) -> usize {
+    [
+        "dice edit ",
+        "tray new ",
+        "tray rename ",
+        "dice delete ",
+        "tray delete ",
+    ]
+    .into_iter()
+    .find_map(|prefix| buffer.starts_with(prefix).then_some(prefix.len()))
+    .unwrap_or(0)
 }
 
 fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
@@ -150,6 +188,7 @@ fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
             }
         }
         InputAction::OpenManager => app.open_context_manager(),
+        InputAction::OpenDiceManager => app.open_dice_manager(),
         InputAction::NewTarget => app.prefill_new_target()?,
         InputAction::DeleteTarget(target_id) => match app.screen {
             rdice_tui::app::Screen::TrayDetail(_) | rdice_tui::app::Screen::AddDie(_) => {
@@ -169,4 +208,15 @@ fn apply_input_action(app: &mut App, action: InputAction) -> Result<()> {
 
 fn to_storage_error(err: impl std::fmt::Display) -> DiceError {
     DiceError::StorageError(err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::guided_command_prefix_len;
+
+    #[test]
+    fn guided_command_prefixes_are_protected() {
+        assert_eq!(guided_command_prefix_len("dice edit "), "dice edit ".len());
+        assert_eq!(guided_command_prefix_len("manager dice"), 0);
+    }
 }

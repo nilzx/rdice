@@ -3,6 +3,7 @@ use ratatui::layout::Rect;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::App;
+use crate::theme;
 
 pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
     let body = app
@@ -33,22 +34,30 @@ pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
         .unwrap_or_else(|| "Tray not found".to_string());
 
     frame.render_widget(
-        Paragraph::new(body).block(
-            Block::default()
-                .title(format!(" Tray: {tray_name} "))
-                .borders(Borders::ALL),
-        ),
+        Paragraph::new(body)
+            .style(theme::content(app.color_enabled))
+            .block(
+                Block::default()
+                    .title(format!(" Tray: {tray_name} "))
+                    .title_style(theme::title(app.color_enabled))
+                    .borders(Borders::ALL)
+                    .border_style(theme::border(app.color_enabled)),
+            ),
         area,
     );
 }
 
 pub fn render_add_die(frame: &mut Frame<'_>, area: Rect, app: &App, tray_name: &str) {
     frame.render_widget(
-        Paragraph::new(render_add_die_text(app)).block(
-            Block::default()
-                .title(format!(" Add die to {tray_name} "))
-                .borders(Borders::ALL),
-        ),
+        Paragraph::new(render_add_die_text(app))
+            .style(theme::content(app.color_enabled))
+            .block(
+                Block::default()
+                    .title(format!(" Add die to {tray_name} "))
+                    .title_style(theme::title(app.color_enabled))
+                    .borders(Borders::ALL)
+                    .border_style(theme::border(app.color_enabled)),
+            ),
         area,
     );
 }

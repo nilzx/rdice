@@ -2,20 +2,56 @@ use rdice_core::DiceEngine;
 use rdice_core::die::{DieKind, FaceValue};
 use rdice_core::engine::{DieRoll, RollAnalysis, RollBatchResult};
 
+const RESET: &str = "\x1b[0m";
+const BOLD_GREEN: &str = "\x1b[1;32m";
+const CYAN: &str = "\x1b[36m";
+const DIM: &str = "\x1b[2m";
+const MAGENTA: &str = "\x1b[35m";
+const RED: &str = "\x1b[31m";
+const YELLOW: &str = "\x1b[33m";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RollOutputMode {
     Folded,
     Expanded,
 }
 
-pub fn print_dice(engine: &DiceEngine) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutputStyle {
+    color: bool,
+}
+
+impl OutputStyle {
+    pub fn new(color: bool) -> Self {
+        Self { color }
+    }
+
+    pub fn color_enabled(self) -> bool {
+        self.color
+    }
+}
+
+pub fn color_enabled_from(args: &[String]) -> bool {
+    std::env::var_os("NO_COLOR").is_none() && !args.iter().any(|arg| arg == "--no-color")
+}
+
+pub fn print_error(err: &impl std::fmt::Display, style: OutputStyle) {
+    eprintln!("{}: {err}", paint(style, RED, "Error"));
+}
+
+pub fn print_dice(engine: &DiceEngine, style: OutputStyle) {
     for die in engine.list_dice() {
         let kind = match die.kind {
             DieKind::Builtin => "builtin",
             DieKind::Custom => "custom",
         };
         let faces = format_die_faces(die.kind, &die.faces);
-        println!("{} ({kind}): [{faces}]", die.name);
+        let line = format!("{} ({kind}): [{faces}]", die.name);
+        let color = match die.kind {
+            DieKind::Builtin => DIM,
+            DieKind::Custom => CYAN,
+        };
+        println!("{}", paint(style, color, line));
     }
 }
 
@@ -36,45 +72,75 @@ fn format_die_faces(kind: DieKind, faces: &[FaceValue]) -> String {
         .join(", ")
 }
 
-pub fn print_roll_result(result: &RollBatchResult, modifiers: &[i64], mode: RollOutputMode) {
+pub fn print_roll_result(
+    result: &RollBatchResult,
+    modifiers: &[i64],
+    mode: RollOutputMode,
+    style: OutputStyle,
+) {
     match mode {
-        RollOutputMode::Folded => print_folded_rolls(&result.rolls),
-        RollOutputMode::Expanded => print_expanded_rolls(&result.rolls),
+        RollOutputMode::Folded => print_folded_rolls(&result.rolls, style),
+        RollOutputMode::Expanded => print_expanded_rolls(&result.rolls, style),
     }
 
     for modifier in modifiers {
-        println!("modifier: {modifier:+}");
+        println!(
+            "{}",
+            paint(style, YELLOW, format!("modifier: {modifier:+}"))
+        );
     }
 
     let modifier_sum: i64 = modifiers.iter().sum();
     if should_print_total(result, modifiers, mode) {
         match result.integer_sum {
-            Some(sum) => println!("total: {}", sum + modifier_sum),
-            None if !modifiers.is_empty() => println!("total: {modifier_sum}"),
+            Some(sum) => println!(
+                "{}",
+                paint(style, BOLD_GREEN, format!("total: {}", sum + modifier_sum))
+            ),
+            None if !modifiers.is_empty() => {
+                println!(
+                    "{}",
+                    paint(style, BOLD_GREEN, format!("total: {modifier_sum}"))
+                );
+            }
             None => {}
         }
     }
 }
 
-pub fn print_analysis(analysis: &RollAnalysis, show_expected: bool, show_range: bool) {
+pub fn print_analysis(
+    analysis: &RollAnalysis,
+    show_expected: bool,
+    show_range: bool,
+    style: OutputStyle,
+) {
     if show_expected {
-        println!("expected: {}", analysis.expected_value);
+        println!(
+            "{}",
+            paint(
+                style,
+                MAGENTA,
+                format!("expected: {}", analysis.expected_value)
+            )
+        );
     }
     if show_range {
-        println!(
+        let line = format!(
             "range: {}..{}",
             analysis.point_range.min, analysis.point_range.max
         );
+        println!("{}", paint(style, MAGENTA, line));
     }
 }
 
-fn print_expanded_rolls(rolls: &[DieRoll]) {
+fn print_expanded_rolls(rolls: &[DieRoll], style: OutputStyle) {
     for roll in rolls {
-        println!("#{} {}: {}", roll.roll_id, roll.die_name, roll.value);
+        let line = format!("#{} {}: {}", roll.roll_id, roll.die_name, roll.value);
+        println!("{}", paint(style, CYAN, line));
     }
 }
 
-fn print_folded_rolls(rolls: &[DieRoll]) {
+fn print_folded_rolls(rolls: &[DieRoll], style: OutputStyle) {
     let mut groups: Vec<(&str, Vec<&FaceValue>)> = Vec::new();
     for roll in rolls {
         if let Some((_, values)) = groups
@@ -102,9 +168,11 @@ fn print_folded_rolls(rolls: &[DieRoll]) {
             }
         }
         if has_integer {
-            println!("{die_name} x{}: {sum}", shown_values.split(", ").count());
+            let line = format!("{die_name} x{}: {sum}", shown_values.split(", ").count());
+            println!("{}", paint(style, CYAN, line));
         } else {
-            println!("{die_name}: [{shown_values}]");
+            let line = format!("{die_name}: [{shown_values}]");
+            println!("{}", paint(style, CYAN, line));
         }
     }
 }
@@ -124,5 +192,13 @@ fn should_print_total(result: &RollBatchResult, modifiers: &[i64], mode: RollOut
             let group_count = group_names.len();
             group_count + modifier_count > 1
         }
+    }
+}
+
+fn paint(style: OutputStyle, ansi: &str, text: impl std::fmt::Display) -> String {
+    if style.color_enabled() {
+        format!("{ansi}{text}{RESET}")
+    } else {
+        text.to_string()
     }
 }

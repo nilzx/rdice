@@ -3,14 +3,19 @@ use ratatui::layout::Rect;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::App;
+use crate::theme;
 
 pub fn render(frame: &mut Frame<'_>, area: Rect, app: &App) {
     frame.render_widget(
-        Paragraph::new(render_text(app)).block(
-            Block::default()
-                .title(" Dice Manager ")
-                .borders(Borders::ALL),
-        ),
+        Paragraph::new(render_text(app))
+            .style(theme::content(app.color_enabled))
+            .block(
+                Block::default()
+                    .title(" Dice Manager ")
+                    .title_style(theme::title(app.color_enabled))
+                    .borders(Borders::ALL)
+                    .border_style(theme::border(app.color_enabled)),
+            ),
         area,
     );
 }

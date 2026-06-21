@@ -247,11 +247,91 @@ fn app_prefills_manager_commands_and_returns_from_add_die() {
     app.open_context_manager();
     assert_eq!(app.screen, Screen::DiceManager);
     app.prefill_new_target().unwrap();
-    assert_eq!(app.command_buffer, Some("dice new ".into()));
+    assert!(app.dice_creation.is_some());
+    assert_eq!(app.command_buffer, None);
 
     app.screen = Screen::AddDie("combat".into());
     app.escape();
     assert_eq!(app.screen, Screen::TrayDetail("combat".into()));
+}
+
+#[test]
+fn dice_creation_wizard_collects_name_count_and_faces() {
+    let path = unique_path("dice-wizard");
+    let mut app = empty_app("dice-wizard");
+    app.state_path = path.clone();
+
+    app.start_dice_creation();
+    for ch in "sign".chars() {
+        app.push_dice_creation_char(ch);
+    }
+    app.advance_dice_creation().unwrap();
+
+    for ch in "3".chars() {
+        app.push_dice_creation_char(ch);
+    }
+    app.advance_dice_creation().unwrap();
+
+    for face in ["+", "+1", "blank"] {
+        for ch in face.chars() {
+            app.push_dice_creation_char(ch);
+        }
+        app.advance_dice_creation().unwrap();
+    }
+
+    assert!(app.dice_creation.is_none());
+    assert_eq!(app.message, Some("created die sign".into()));
+    let die_name = app.engine.resolve_die_name("sign").unwrap();
+    let die = app
+        .engine
+        .list_dice()
+        .iter()
+        .find(|die| die.name == die_name)
+        .unwrap();
+    assert_eq!(
+        die.faces,
+        vec![
+            FaceValue::Text("+".into()),
+            FaceValue::Integer(1),
+            FaceValue::Text("blank".into())
+        ]
+    );
+
+    let loaded = App::load_from_path(path.clone()).unwrap();
+    assert!(loaded.engine.resolve_die_name("sign").is_some());
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn dice_creation_wizard_reports_field_errors() {
+    let mut app = empty_app("dice-wizard-errors");
+
+    app.start_dice_creation();
+    app.advance_dice_creation().unwrap();
+    assert!(
+        app.dice_creation
+            .as_ref()
+            .unwrap()
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("name")
+    );
+
+    for ch in "sign".chars() {
+        app.push_dice_creation_char(ch);
+    }
+    app.advance_dice_creation().unwrap();
+    app.advance_dice_creation().unwrap();
+    assert!(
+        app.dice_creation
+            .as_ref()
+            .unwrap()
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("face count")
+    );
 }
 
 #[test]

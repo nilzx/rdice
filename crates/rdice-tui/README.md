@@ -22,6 +22,9 @@ The state path can be overridden with `RDICE_TUI_STATE_PATH`; otherwise it uses:
 ~/.local/state/rdice-tui/state.toml
 ```
 
+The TUI uses terminal colors by default. Set `NO_COLOR` to disable colored
+styles.
+
 ## Keys
 
 Overview:
@@ -35,6 +38,7 @@ R         show/hide range annotations
 E         show/hide expected value annotations
 h         show roll history
 m         open tray manager
+c         open custom dice manager
 PgUp/PgDn change page
 :         command mode
 q         quit
@@ -48,9 +52,18 @@ l<num>    lock/unlock slot
 d<num>    remove slot
 a         add die
 h         show roll history
-m         open custom dice manager
+m/c       open custom dice manager
 Esc       return to overview
 :         command mode
+```
+
+Custom dice manager:
+
+```text
+n         guided new die: name -> face count -> face 1...
+d<num>    delete custom die
+e<num>    edit custom die command
+Esc       return
 ```
 
 Command mode shows `COMMAND:` in the footer. Press `Enter` to apply the command

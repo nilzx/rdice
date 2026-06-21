@@ -3,4 +3,5 @@ pub mod command;
 pub mod input;
 pub mod screens;
 pub mod storage;
+pub mod theme;
 pub mod ui;

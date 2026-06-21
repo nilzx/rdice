@@ -14,6 +14,7 @@ pub enum InputAction {
     Escape,
     AddDie,
     OpenManager,
+    OpenDiceManager,
     NewTarget,
     DeleteTarget(u32),
     EditTarget(usize),
@@ -52,6 +53,7 @@ impl InputState {
             'q' => Some(InputAction::Quit),
             'a' => Some(InputAction::AddDie),
             'm' => Some(InputAction::OpenManager),
+            'c' => Some(InputAction::OpenDiceManager),
             'n' => Some(InputAction::NewTarget),
             _ => None,
         }

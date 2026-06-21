@@ -72,7 +72,7 @@ rdice [-E|--ev] [-R|--range] <dice-expr...>
 rdice list
 rdice config path
 rdice config edit
-rdice help
+rdice help [--no-color]
 ```
 
 示例：
@@ -83,6 +83,9 @@ rdice roll -x 4d6
 rdice roll -f -E -R 3d13 2coin 5 -3
 rdice -E -R 3d6 5 -3
 ```
+
+CLI 默认使用 ANSI 颜色输出。脚本或纯文本日志场景可传入 `--no-color`，或设置
+`NO_COLOR` 禁用颜色；TUI 也会遵循 `NO_COLOR`。
 
 CLI 优先读取 `RDICE_CONFIG_PATH` 指定的配置文件。未设置时默认使用：
 

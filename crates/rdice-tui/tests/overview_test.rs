@@ -3,6 +3,7 @@ use rdice_core::die::FaceValue;
 use rdice_tui::screens::overview::{
     OverviewOptions, TrayCard, build_tray_cards, format_ev, format_total_line, render_grid_text,
 };
+use unicode_width::UnicodeWidthStr;
 
 #[test]
 fn ev_format_rounds_to_one_decimal() {
@@ -87,6 +88,26 @@ fn overview_grid_renders_only_existing_cards() {
     let four_grid = render_grid_text(&four_cards, 80);
     assert!(four_grid.contains("[4] travel"));
     assert_eq!(four_grid.matches('|').count(), 24);
+}
+
+#[test]
+fn overview_grid_keeps_borders_aligned_with_wide_text_faces() {
+    let cards = vec![TrayCard {
+        page_id: 1,
+        name: "中文骰".into(),
+        selected: false,
+        composition: "天气".into(),
+        total_line: "Total:-".into(),
+        text_line: Some("Text:晴天".into()),
+    }];
+
+    let grid = render_grid_text(&cards, 80);
+    let widths = grid.lines().map(UnicodeWidthStr::width).collect::<Vec<_>>();
+
+    assert!(
+        widths.windows(2).all(|window| window[0] == window[1]),
+        "expected aligned display widths, got {widths:?}\n{grid}"
+    );
 }
 
 fn card(page_id: usize, name: &str) -> TrayCard {
