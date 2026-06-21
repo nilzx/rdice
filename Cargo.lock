@@ -1067,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "rdice-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dirs",
  "rdice-core",
@@ -1086,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "rdice-tui"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "crossterm",
  "dirs",

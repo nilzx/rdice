@@ -8,6 +8,14 @@ This project follows SemVer for each published package.
 
 - No unreleased changes.
 
+## 0.1.2 - 2026-06-21
+
+- Added colored CLI output with `--no-color` and `NO_COLOR` support.
+- Added TUI color styling with `NO_COLOR` support.
+- Improved TUI custom dice creation with a step-by-step input wizard.
+- Added a direct TUI shortcut for opening the custom dice manager.
+- Fixed TUI overview alignment for wide text faces such as Chinese dice faces.
+
 ## 0.1.1 - 2026-06-21
 
 - Organized the public workspace documentation.
